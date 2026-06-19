@@ -168,6 +168,56 @@ const MATCHES = [
 ["J6","J","Jordânia","Argentina","2026-06-27T23:00:00-03:00","Dallas"],
 ];
 
+
+// ... [Mantenha todos os jogos da fase de grupos que já estão aí e cole estes logo abaixo, antes do fecha colchetes ];]
+
+// ======================= FASE ELIMINATÓRIA (MATA-MATA) =======================
+
+// DEZESSEIS-AVOS DE FINAL (32 Melhores)
+["M1","MATA","1º Grupo A","2º Grupo C","2026-06-28T16:00:00-03:00","Los Angeles"],
+["M2","MATA","1º Grupo B","2º Grupo A","2026-06-28T21:00:00-03:00","San Francisco"],
+["M3","MATA","1º Grupo C","2º Grupo B","2026-06-29T15:00:00-03:00","Boston"],
+["M4","MATA","1º Grupo D","2º Grupo E","2026-06-29T19:00:00-03:00","Nova York/NJ"],
+["M5","MATA","1º Grupo E","2º Grupo D","2026-06-30T17:00:00-03:00","Dallas"],
+["M6","MATA","1º Grupo F","2º Grupo G","2026-06-30T21:00:00-03:00","Houston"],
+["M7","MATA","1º Grupo G","2º Grupo F","2026-07-01T16:00:00-03:00","Atlanta"],
+["M8","MATA","1º Grupo H","2º Grupo I","2026-07-01T20:00:00-03:00","Miami"],
+["M9","MATA","1º Grupo I","2º Grupo H","2026-07-02T15:00:00-03:00","Toronto"],
+["M10","MATA","1º Grupo J","2º Grupo L","2026-07-02T19:00:00-03:00","Los Angeles"],
+["M11","MATA","1º Grupo K","2º Grupo J","2026-07-03T16:00:00-03:00","Miami"],
+["M12","MATA","1º Grupo L","2º Grupo K","2026-07-03T20:00:00-03:00","Seattle"],
+// (Os 8 melhores terceiros colocados também avançam na Copa real, você pode ajustar esses nomes como "Melhor 3º colocado" se preferir)
+["M13","MATA","1º Melhor 3º","2º Melhor 3º","2026-07-04T15:00:00-03:00","Houston"],
+["M14","MATA","3º Melhor 3º","4º Melhor 3º","2026-07-04T19:00:00-03:00","Vancouver"],
+["M15","MATA","5º Melhor 3º","6º Melhor 3º","2026-07-05T16:00:00-03:00","San Francisco"],
+["M16","MATA","7º Melhor 3º","8º Melhor 3º","2026-07-05T20:00:00-03:00","Cidade do México"],
+
+// OITAVAS DE FINAL
+["O1","MATA","Vencedor M1","Vencedor M2","2026-07-07T16:00:00-03:00","Atlanta"],
+["O2","MATA","Vencedor M3","Vencedor M4","2026-07-07T21:00:00-03:00","Filadélfia"],
+["O3","MATA","Vencedor M5","Vencedor M6","2026-07-08T17:00:00-03:00","Houston"],
+["O4","MATA","Vencedor M7","Vencedor M8","2026-07-08T21:00:00-03:00","Nova York/NJ"],
+["O5","MATA","Vencedor M9","Vencedor M10","2026-07-09T16:00:00-03:00","Toronto"],
+["O6","MATA","Vencedor M11","Vencedor M12","2026-07-09T20:00:00-03:00","Seattle"],
+["O7","MATA","Vencedor M13","Vencedor M14","2026-07-10T17:00:00-03:00","Dallas"],
+["O8","MATA","Vencedor M15","Vencedor M16","2026-07-10T21:00:00-03:00","Kansas City"],
+
+// QUARTAS DE FINAL
+["Q1","MATA","Vencedor O1","Vencedor O2","2026-07-11T16:30:00-03:00","Boston"],
+["Q2","MATA","Vencedor O3","Vencedor O4","2026-07-11T20:30:00-03:00","Miami"],
+["Q3","MATA","Vencedor O5","Vencedor O6","2026-07-12T16:30:00-03:00","Kansas City"],
+["Q4","MATA","Vencedor O7","Vencedor O8","2026-07-12T20:30:00-03:00","Los Angeles"],
+
+// SEMIFINAIS
+["S1","MATA","Vencedor Q1","Vencedor Q2","2026-07-14T20:00:00-03:00","Dallas"],
+["S2","MATA","Vencedor Q3","Vencedor Q4","2026-07-15T20:00:00-03:00","Atlanta"],
+
+// TERCEIRO LUGAR
+["T3","MATA","Perdedor S1","Perdedor S2","2026-07-18T16:00:00-03:00","Miami"],
+
+// GRANDE FINAL
+["F1","MATA","Vencedor S1","Vencedor S2","2026-07-19T16:00:00-03:00","Nova York/Nova Jersey"]
+
 /* ======================= ESTADO ======================= */
 let userName = "";
 let activeTab = "palpites";
@@ -286,7 +336,7 @@ function renderPalpites(){
   `;
   const sel = document.getElementById("groupSel");
   sel.innerHTML = `<option value="TODOS">Todos os grupos</option>` +
-    Object.keys(GROUPS).map(g=>`<option value="${g}">Grupo ${g}</option>`).join("");
+    Object.keys(GROUPS).map(g=>`<option value="${g}">Grupo ${g}</option>`).join("") + `<option value="MATA">Fase Eliminatória 🏆</option>`;
   sel.value = groupFilter;
   sel.onchange = ()=>{ groupFilter = sel.value; renderMatchesList(); };
   renderMatchesList();
@@ -294,11 +344,26 @@ function renderPalpites(){
 
 function renderMatchesList(){
   const wrap = document.getElementById("matchesWrap");
-  const groupsToShow = groupFilter==="TODOS" ? Object.keys(GROUPS) : [groupFilter];
+  
+  // 1. AJUSTE AQUI: Se for TODOS, pega os grupos de A a L + a tag "MATA"
+  let groupsToShow = [];
+  if (groupFilter === "TODOS") {
+    groupsToShow = [...Object.keys(GROUPS), "MATA"];
+  } else {
+    groupsToShow = [groupFilter];
+  }
+
   let html = "";
   groupsToShow.forEach(g=>{
     const ms = MATCHES.filter(m=>m[1]===g);
-    html += `<div class="card"><div class="group-title">Grupo ${g} — ${GROUPS[g].join(", ")}</div>`;
+    
+    // 2. AJUSTE AQUI: Se for o Mata-Mata, mostra um título personalizado para não quebrar o código
+    if (g === "MATA") {
+      html += `<div class="card"><div class="group-title">Fase Eliminatória — Mata-Mata 🏆</div>`;
+    } else {
+      html += `<div class="card"><div class="group-title">Grupo ${g} — ${GROUPS[g].join(", ")}</div>`;
+    }
+
     ms.forEach(m=>{
       const [id,grp,t1,t2,iso,local] = m;
       const locked = isLocked(m);
@@ -339,7 +404,6 @@ function renderMatchesList(){
     ia.oninput = ib.oninput = ()=>{ clearTimeout(timer); timer=setTimeout(save,500); };
   });
 }
-
 async function computeRanking(){
   const all = await loadAllPicks();
   const players = new Set([...usersCache, ...Object.keys(all)]);
