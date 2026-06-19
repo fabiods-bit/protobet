@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Bolão Copa 2026</title>
+<style>
+  :root{
+    --green:#0a6b3a; --green-dark:#064d2a; --yellow:#ffcc00; --bg:#f4f6f5;
+    --card:#ffffff; --text:#1a1a1a; --muted:#6b7280; --danger:#d33; --ok:#0a6b3a;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);}
+  header{background:linear-gradient(135deg,var(--green),var(--green-dark));color:#fff;padding:18px 16px;text-align:center;}
+  header h1{margin:0;font-size:1.4rem;letter-spacing:.5px;}
+  header p{margin:4px 0 0;font-size:.85rem;opacity:.9;}
+  .container{max-width:780px;margin:0 auto;padding:14px;}
+  .card{background:var(--card);border-radius:12px;padding:14px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.08);}
+  .tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;}
+  .tab{flex:1;padding:10px;text-align:center;border-radius:10px;background:#e5e9e7;cursor:pointer;font-weight:600;font-size:.85rem;color:var(--green-dark);}
+  .tab.active{background:var(--green);color:#fff;}
+  .login-box input{width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;font-size:1rem;margin-bottom:8px;}
+  button{background:var(--green);color:#fff;border:none;padding:10px 16px;border-radius:8px;font-weight:600;cursor:pointer;font-size:.9rem;}
+  button.secondary{background:#e5e9e7;color:var(--green-dark);}
+  button:disabled{background:#ccc;cursor:not-allowed;}
+  .group-title{font-weight:700;color:var(--green-dark);margin:14px 0 6px;font-size:1rem;border-bottom:2px solid var(--yellow);padding-bottom:4px;}
+  .match{display:flex;align-items:center;justify-content:space-between;padding:10px 6px;border-bottom:1px solid #eee;gap:8px;flex-wrap:wrap;}
+  .match:last-child{border-bottom:none;}
+  .teams{flex:1;min-width:140px;font-size:.92rem;}
+  .teams b{display:block;}
+  .meta{font-size:.72rem;color:var(--muted);}
+  .score-input{display:flex;align-items:center;gap:6px;}
+  .score-input input{width:38px;padding:6px;text-align:center;border:1px solid #ccc;border-radius:6px;font-size:1rem;}
+  .locked{color:var(--danger);font-size:.75rem;font-weight:600;}
+  .saved{color:var(--ok);font-size:.75rem;font-weight:600;}
+  .pill{display:inline-block;font-size:.7rem;padding:2px 8px;border-radius:10px;background:#eef5f0;color:var(--green-dark);margin-left:6px;}
+  table{width:100%;border-collapse:collapse;font-size:.88rem;}
+  th,td{padding:8px 6px;text-align:left;border-bottom:1px solid #eee;}
+  th{color:var(--muted);font-weight:600;font-size:.75rem;text-transform:uppercase;}
+  .rank-1{background:#fff8e1;}
+  .small{font-size:.78rem;color:var(--muted);}
+  .admin-row{display:flex;gap:6px;align-items:center;padding:6px 0;border-bottom:1px solid #eee;flex-wrap:wrap;}
+  .admin-row input{width:38px;padding:4px;text-align:center;border:1px solid #ccc;border-radius:5px;}
+  .filter-row{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;}
+  .filter-row select{padding:8px;border-radius:8px;border:1px solid #ccc;font-size:.85rem;}
+  #toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--green-dark);color:#fff;padding:10px 18px;border-radius:20px;font-size:.85rem;opacity:0;transition:opacity .3s;pointer-events:none;z-index:50;}
+  #toast.show{opacity:1;}
+  .hint{font-size:.8rem;color:var(--muted);margin-top:-4px;margin-bottom:10px;}
+</style>
+</head>
+<body>
+<header>
+  <h1>🏆 Bolão Copa do Mundo 2026</h1>
+  <p>Palpites entre amigos — vale até o jogo começar!</p>
+</header>
+<div class="container" id="app"></div>
+<div id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getFirestore, doc, getDoc, setDoc, collection, getDocs
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBHfIx9TgvFAR0LTUMWmwsGpgswCOKOzJA",
+  authDomain: "protobet-1d3cb.firebaseapp.com",
+  projectId: "protobet-1d3cb",
+  storageBucket: "protobet-1d3cb.firebasestorage.app",
+  messagingSenderId: "176084326016",
+  appId: "1:176084326016:web:1c271022f368bb59cbb865",
+  measurementId: "G-HXHDGWNH6F"
+};
+const fbApp = initializeApp(firebaseConfig);
+const db = getFirestore(fbApp);
+
+/* ======================= DADOS DA COPA ======================= */
+// Horários em horário de Brasília (-03:00). Fase eliminatória será adicionada pelo admin conforme os resultados.
+const GROUPS = {
+  A:["México","África do Sul","Coreia do Sul","República Tcheca"],
+  B:["Canadá","Catar","Suíça","Bósnia e Herzegovina"],
+  C:["Brasil","Marrocos","Haiti","Escócia"],
+  D:["Estados Unidos","Paraguai","Austrália","Turquia"],
+  E:["Alemanha","Curaçao","Costa do Marfim","Equador"],
+  F:["Holanda","Japão","Tunísia","Suécia"],
+  G:["Bélgica","Egito","Irã","Nova Zelândia"],
+  H:["Espanha","Cabo Verde","Arábia Saudita","Uruguai"],
+  I:["França","Senegal","Noruega","Iraque"],
+  J:["Argentina","Argélia","Áustria","Jordânia"],
+  K:["Portugal","Uzbequistão","Colômbia","RD Congo"],
+  L:["Inglaterra","Croácia","Gana","Panamá"]
+};
+
+// id, group, t1, t2, datetime ISO (Brasília -03:00), local
+const MATCHES = [
+["A1","A","México","África do Sul","2026-06-11T16:00:00-03:00","Cidade do México"],
+["A2","A","Coreia do Sul","República Tcheca","2026-06-11T23:00:00-03:00","Guadalajara"],
+["B1","B","Canadá","Bósnia e Herzegovina","2026-06-12T16:00:00-03:00","Toronto"],
+["D1","D","Estados Unidos","Paraguai","2026-06-12T22:00:00-03:00","Los Angeles"],
+["D2","D","Austrália","Turquia","2026-06-13T01:00:00-03:00","Vancouver"],
+["B2","B","Catar","Suíça","2026-06-13T16:00:00-03:00","San Francisco"],
+["C1","C","Brasil","Marrocos","2026-06-13T19:00:00-03:00","Nova York/Nova Jersey"],
+["C2","C","Haiti","Escócia","2026-06-13T22:00:00-03:00","Boston"],
+["E1","E","Alemanha","Curaçao","2026-06-14T14:00:00-03:00","Houston"],
+["F1","F","Holanda","Japão","2026-06-14T17:00:00-03:00","Dallas"],
+["E2","E","Costa do Marfim","Equador","2026-06-14T20:00:00-03:00","Filadélfia"],
+["F2","F","Suécia","Tunísia","2026-06-14T23:00:00-03:00","Monterrey"],
+["H1","H","Espanha","Cabo Verde","2026-06-15T13:00:00-03:00","Atlanta"],
+["G1","G","Bélgica","Egito","2026-06-15T16:00:00-03:00","Seattle"],
+["H2","H","Arábia Saudita","Uruguai","2026-06-15T19:00:00-03:00","Miami"],
+["G2","G","Irã","Nova Zelândia","2026-06-15T22:00:00-03:00","Los Angeles"],
+["J1","J","Argentina","Argélia","2026-06-16T14:00:00-03:00","Kansas City"],
+["I1","I","França","Senegal","2026-06-16T16:00:00-03:00","Nova York/Nova Jersey"],
+["I2","I","Iraque","Noruega","2026-06-16T19:00:00-03:00","Boston"],
+["J2","J","Áustria","Jordânia","2026-06-17T01:00:00-03:00","San Francisco"],
+["K1","K","Portugal","RD Congo","2026-06-17T14:00:00-03:00","Houston"],
+["L1","L","Inglaterra","Croácia","2026-06-17T17:00:00-03:00","Dallas"],
+["L2","L","Gana","Panamá","2026-06-17T20:00:00-03:00","Toronto"],
+["K2","K","Uzbequistão","Colômbia","2026-06-17T23:00:00-03:00","Cidade do México"],
+["A3","A","República Tcheca","África do Sul","2026-06-18T13:00:00-03:00","Atlanta"],
+["B3","B","Suíça","Bósnia e Herzegovina","2026-06-18T16:00:00-03:00","Los Angeles"],
+["B4","B","Canadá","Catar","2026-06-18T19:00:00-03:00","Vancouver"],
+["A4","A","México","Coreia do Sul","2026-06-18T22:00:00-03:00","Guadalajara"],
+["D3","D","Turquia","Paraguai","2026-06-19T01:00:00-03:00","San Francisco"],
+["D4","D","Estados Unidos","Austrália","2026-06-19T16:00:00-03:00","Seattle"],
+["C3","C","Escócia","Marrocos","2026-06-19T19:00:00-03:00","Boston"],
+["C4","C","Brasil","Haiti","2026-06-19T22:00:00-03:00","Filadélfia"],
+["F3","F","Holanda","Suécia","2026-06-20T14:00:00-03:00","Houston"],
+["E3","E","Alemanha","Costa do Marfim","2026-06-20T17:00:00-03:00","Toronto"],
+["E4","E","Equador","Curaçao","2026-06-20T21:00:00-03:00","Kansas City"],
+["F4","F","Tunísia","Japão","2026-06-21T01:00:00-03:00","Monterrey"],
+["H3","H","Espanha","Arábia Saudita","2026-06-21T13:00:00-03:00","Atlanta"],
+["G3","G","Bélgica","Irã","2026-06-21T16:00:00-03:00","Los Angeles"],
+["H4","H","Uruguai","Cabo Verde","2026-06-21T19:00:00-03:00","Miami"],
+["G4","G","Nova Zelândia","Egito","2026-06-21T22:00:00-03:00","Vancouver"],
+["J3","J","Argentina","Áustria","2026-06-22T14:00:00-03:00","Dallas"],
+["I3","I","França","Iraque","2026-06-22T18:00:00-03:00","Filadélfia"],
+["I4","I","Noruega","Senegal","2026-06-22T21:00:00-03:00","Nova York/Nova Jersey"],
+["J4","J","Jordânia","Argélia","2026-06-23T00:00:00-03:00","San Francisco"],
+["K3","K","Portugal","Uzbequistão","2026-06-23T14:00:00-03:00","Houston"],
+["L3","L","Inglaterra","Gana","2026-06-23T17:00:00-03:00","Boston"],
+["L4","L","Panamá","Croácia","2026-06-23T20:00:00-03:00","Toronto"],
+["K4","K","Colômbia","RD Congo","2026-06-23T23:00:00-03:00","Guadalajara"],
+["B5","B","Suíça","Canadá","2026-06-24T16:00:00-03:00","Vancouver"],
+["B6","B","Bósnia e Herzegovina","Catar","2026-06-24T16:00:00-03:00","Seattle"],
+["C5","C","Escócia","Brasil","2026-06-24T19:00:00-03:00","Miami"],
+["C6","C","Marrocos","Haiti","2026-06-24T19:00:00-03:00","Atlanta"],
+["A5","A","República Tcheca","México","2026-06-24T22:00:00-03:00","Cidade do México"],
+["A6","A","África do Sul","Coreia do Sul","2026-06-24T22:00:00-03:00","Monterrey"],
+["E5","E","Equador","Alemanha","2026-06-25T17:00:00-03:00","Nova York/Nova Jersey"],
+["E6","E","Curaçao","Costa do Marfim","2026-06-25T17:00:00-03:00","Filadélfia"],
+["F5","F","Japão","Suécia","2026-06-25T20:00:00-03:00","Dallas"],
+["F6","F","Tunísia","Holanda","2026-06-25T20:00:00-03:00","Kansas City"],
+["D5","D","Turquia","Estados Unidos","2026-06-25T23:00:00-03:00","Los Angeles"],
+["D6","D","Paraguai","Austrália","2026-06-25T23:00:00-03:00","San Francisco"],
+["I5","I","Noruega","França","2026-06-26T16:00:00-03:00","Boston"],
+["I6","I","Senegal","Iraque","2026-06-26T16:00:00-03:00","Toronto"],
+["H5","H","Cabo Verde","Arábia Saudita","2026-06-26T21:00:00-03:00","Houston"],
+["H6","H","Uruguai","Espanha","2026-06-26T21:00:00-03:00","Guadalajara"],
+["G5","G","Egito","Irã","2026-06-27T00:00:00-03:00","Seattle"],
+["G6","G","Nova Zelândia","Bélgica","2026-06-27T00:00:00-03:00","Vancouver"],
+["L5","L","Panamá","Inglaterra","2026-06-27T18:00:00-03:00","Nova York/Nova Jersey"],
+["L6","L","Croácia","Gana","2026-06-27T18:00:00-03:00","Filadélfia"],
+["K5","K","Colômbia","Portugal","2026-06-27T20:30:00-03:00","Miami"],
+["K6","K","RD Congo","Uzbequistão","2026-06-27T20:30:00-03:00","Atlanta"],
+["J5","J","Argélia","Áustria","2026-06-27T23:00:00-03:00","Kansas City"],
+["J6","J","Jordânia","Argentina","2026-06-27T23:00:00-03:00","Dallas"],
+];
+
+/* ======================= ESTADO ======================= */
+let userName = "";
+let activeTab = "palpites";
+let resultsCache = {};   // {matchId:{a,b}}
+let myPicksCache = {};   // {matchId:{a,b}}
+let usersCache = [];
+let groupFilter = "TODOS";
+const ADMIN_PASS = "copa2026"; // troque se quiser
+let isAdmin = false;
+
+function nowDate(){ return new Date(); }
+function isLocked(m){ return nowDate() >= new Date(m[4]); }
+function fmtDate(iso){
+  const d = new Date(iso);
+  return d.toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
+}
+function toast(msg){
+  const t=document.getElementById("toast");
+  t.textContent=msg; t.classList.add("show");
+  setTimeout(()=>t.classList.remove("show"),1800);
+}
+
+/* ======================= STORAGE HELPERS (Firebase Firestore) ======================= */
+async function loadUsers(){
+  try{
+    const snap = await getDoc(doc(db,"meta","users"));
+    usersCache = snap.exists() ? (snap.data().list || []) : [];
+  }catch(e){ console.error(e); usersCache = []; }
+}
+async function saveUsers(){
+  await setDoc(doc(db,"meta","users"), { list: usersCache });
+}
+async function loadResults(){
+  try{
+    const snap = await getDoc(doc(db,"meta","results"));
+    resultsCache = snap.exists() ? (snap.data().map || {}) : {};
+  }catch(e){ console.error(e); resultsCache = {}; }
+}
+async function saveResults(){
+  await setDoc(doc(db,"meta","results"), { map: resultsCache });
+}
+async function loadMyPicks(){
+  if(!userName) return;
+  try{
+    const snap = await getDoc(doc(db,"picks",userName));
+    myPicksCache = snap.exists() ? (snap.data().map || {}) : {};
+  }catch(e){ console.error(e); myPicksCache = {}; }
+}
+async function saveMyPicks(){
+  await setDoc(doc(db,"picks",userName), { map: myPicksCache });
+}
+async function loadAllPicks(){
+  const out = {};
+  try{
+    const snaps = await getDocs(collection(db,"picks"));
+    snaps.forEach(s=>{ out[s.id] = s.data().map || {}; });
+  }catch(e){ console.error(e); }
+  return out;
+}
+
+/* ======================= RENDER ======================= */
+function render(){
+  const app = document.getElementById("app");
+  if(!userName){
+    app.innerHTML = `
+      <div class="card login-box">
+        <h2 style="margin-top:0;color:var(--green-dark)">Entrar no bolão</h2>
+        <p class="small">Digite seu nome (use sempre o mesmo, para guardar seus palpites). Os dados são compartilhados com o grupo.</p>
+        <input id="nameInput" placeholder="Seu nome" maxlength="24">
+        <button id="enterBtn">Entrar</button>
+      </div>`;
+    document.getElementById("enterBtn").onclick = async ()=>{
+      const v = document.getElementById("nameInput").value.trim();
+      if(!v){ toast("Digite seu nome"); return; }
+      userName = v;
+      await loadUsers();
+      if(!usersCache.includes(userName)){ usersCache.push(userName); await saveUsers(); }
+      await loadResults();
+      await loadMyPicks();
+      render();
+    };
+    document.getElementById("nameInput").addEventListener("keydown",e=>{ if(e.key==="Enter") document.getElementById("enterBtn").click(); });
+    return;
+  }
+
+  app.innerHTML = `
+    <div class="card" style="display:flex;justify-content:space-between;align-items:center;">
+      <div>Olá, <b>${userName}</b> 👋</div>
+      <button class="secondary" id="switchUserBtn">Trocar usuário</button>
+    </div>
+    <div class="tabs">
+      <div class="tab ${activeTab==='palpites'?'active':''}" data-tab="palpites">Meus Palpites</div>
+      <div class="tab ${activeTab==='ranking'?'active':''}" data-tab="ranking">Ranking</div>
+      <div class="tab ${activeTab==='admin'?'active':''}" data-tab="admin">Admin</div>
+    </div>
+    <div id="tabContent"></div>
+  `;
+  document.getElementById("switchUserBtn").onclick = ()=>{ userName=""; isAdmin=false; render(); };
+  document.querySelectorAll(".tab").forEach(t=>{
+    t.onclick = ()=>{ activeTab = t.dataset.tab; render(); };
+  });
+
+  if(activeTab==="palpites") renderPalpites();
+  else if(activeTab==="ranking") renderRanking();
+  else renderAdmin();
+}
+
+function renderPalpites(){
+  const el = document.getElementById("tabContent");
+  el.innerHTML = `
+    <div class="filter-row">
+      <select id="groupSel"></select>
+    </div>
+    <div id="matchesWrap"></div>
+  `;
+  const sel = document.getElementById("groupSel");
+  sel.innerHTML = `<option value="TODOS">Todos os grupos</option>` +
+    Object.keys(GROUPS).map(g=>`<option value="${g}">Grupo ${g}</option>`).join("");
+  sel.value = groupFilter;
+  sel.onchange = ()=>{ groupFilter = sel.value; renderMatchesList(); };
+  renderMatchesList();
+}
+
+function renderMatchesList(){
+  const wrap = document.getElementById("matchesWrap");
+  const groupsToShow = groupFilter==="TODOS" ? Object.keys(GROUPS) : [groupFilter];
+  let html = "";
+  groupsToShow.forEach(g=>{
+    const ms = MATCHES.filter(m=>m[1]===g);
+    html += `<div class="card"><div class="group-title">Grupo ${g} — ${GROUPS[g].join(", ")}</div>`;
+    ms.forEach(m=>{
+      const [id,grp,t1,t2,iso,local] = m;
+      const locked = isLocked(m);
+      const pick = myPicksCache[id] || {a:"",b:""};
+      const res = resultsCache[id];
+      html += `<div class="match" data-id="${id}">
+        <div class="teams"><b>${t1} x ${t2}</b><span class="meta">${fmtDate(iso)} · ${local}</span></div>
+        <div class="score-input">
+          <input type="number" min="0" max="20" data-side="a" value="${pick.a}" ${locked?"disabled":""}>
+          <span>x</span>
+          <input type="number" min="0" max="20" data-side="b" value="${pick.b}" ${locked?"disabled":""}>
+          ${locked?'<span class="locked">🔒 Encerrado</span>':'<span class="saved" style="display:none">Salvo ✓</span>'}
+        </div>
+        ${res?`<span class="pill">Resultado: ${res.a} x ${res.b}</span>`:""}
+      </div>`;
+    });
+    html += `</div>`;
+  });
+  wrap.innerHTML = html;
+
+  wrap.querySelectorAll(".match").forEach(row=>{
+    const id = row.dataset.id;
+    const m = MATCHES.find(mm=>mm[0]===id);
+    if(isLocked(m)) return;
+    const ia = row.querySelector('input[data-side="a"]');
+    const ib = row.querySelector('input[data-side="b"]');
+    const savedTag = row.querySelector(".saved");
+    let timer;
+    const save = async ()=>{
+      const a = ia.value===""?"":parseInt(ia.value);
+      const b = ib.value===""?"":parseInt(ib.value);
+      if(a==="" || b==="" || isNaN(a) || isNaN(b)) return;
+      myPicksCache[id] = {a,b};
+      await saveMyPicks();
+      savedTag.style.display="inline";
+      setTimeout(()=>savedTag.style.display="none",1200);
+    };
+    ia.oninput = ib.oninput = ()=>{ clearTimeout(timer); timer=setTimeout(save,500); };
+  });
+}
+
+async function computeRanking(){
+  const all = await loadAllPicks();
+  const players = new Set([...usersCache, ...Object.keys(all)]);
+  const rows = [];
+  players.forEach(name=>{
+    let pts=0, exact=0, acertos=0, total=0;
+    const picks = all[name] || (name===userName?myPicksCache:{});
+    MATCHES.forEach(m=>{
+      const id=m[0];
+      const res = resultsCache[id];
+      const p = picks[id];
+      if(!res || !p) return;
+      total++;
+      if(p.a===res.a && p.b===res.b){ pts+=3; exact++; acertos++; }
+      else{
+        const pd = Math.sign(p.a-p.b), rd = Math.sign(res.a-res.b);
+        if(pd===rd){ pts+=1; acertos++; }
+      }
+    });
+    rows.push({name,pts,exact,acertos,total});
+  });
+  rows.sort((x,y)=> y.pts-x.pts || y.exact-x.exact);
+  return rows;
+}
+
+async function renderRanking(){
+  const el = document.getElementById("tabContent");
+  el.innerHTML = `<div class="card"><p class="small">Carregando ranking...</p></div>`;
+  await loadResults();
+  await loadUsers();
+  const rows = await computeRanking();
+  let rowsHtml = rows.map((r,i)=>`
+    <tr class="${i===0?'rank-1':''}">
+      <td>${i+1}${i===0?' 🏆':''}</td>
+      <td>${r.name}${r.name===userName?' (você)':''}</td>
+      <td><b>${r.pts}</b></td>
+      <td>${r.exact}</td>
+      <td>${r.acertos}</td>
+      <td>${r.total}</td>
+    </tr>`).join("");
+  if(rows.length===0) rowsHtml = `<tr><td colspan="6" class="small">Ninguém com resultados ainda.</td></tr>`;
+  el.innerHTML = `
+    <div class="card">
+      <h3 style="margin-top:0;color:var(--green-dark)">Ranking do Bolão</h3>
+      <p class="hint">3 pts = placar exato · 1 pt = acertou o resultado (vitória/empate/derrota) · 0 = errou</p>
+      <table>
+        <tr><th>#</th><th>Nome</th><th>Pontos</th><th>Exatos</th><th>Acertos</th><th>Jogos c/ resultado</th></tr>
+        ${rowsHtml}
+      </table>
+    </div>`;
+}
+
+function renderAdmin(){
+  const el = document.getElementById("tabContent");
+  if(!isAdmin){
+    el.innerHTML = `
+      <div class="card">
+        <h3 style="margin-top:0;color:var(--green-dark)">Área do Admin</h3>
+        <p class="small">Aqui quem organiza o bolão lança os resultados reais dos jogos.</p>
+        <input id="passInput" type="password" placeholder="Senha do admin" style="width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;margin-bottom:8px;">
+        <button id="passBtn">Entrar</button>
+      </div>`;
+    document.getElementById("passBtn").onclick = ()=>{
+      const v = document.getElementById("passInput").value;
+      if(v===ADMIN_PASS){ isAdmin=true; renderAdmin(); }
+      else toast("Senha incorreta");
+    };
+    return;
+  }
+  const groupsToShow = Object.keys(GROUPS);
+  let html = `<div class="card"><p class="small">Lance o resultado real de cada jogo conforme eles forem acontecendo. Isso atualiza o ranking automaticamente.</p></div>`;
+  groupsToShow.forEach(g=>{
+    html += `<div class="card"><div class="group-title">Grupo ${g}</div>`;
+    MATCHES.filter(m=>m[1]===g).forEach(m=>{
+      const [id,,t1,t2,iso] = m;
+      const res = resultsCache[id] || {a:"",b:""};
+      html += `<div class="admin-row" data-id="${id}">
+        <span style="flex:1;min-width:160px;">${t1} x ${t2} <span class="meta">(${fmtDate(iso)})</span></span>
+        <input type="number" min="0" data-side="a" value="${res.a}">
+        <span>x</span>
+        <input type="number" min="0" data-side="b" value="${res.b}">
+      </div>`;
+    });
+    html += `</div>`;
+  });
+  html += `<button id="saveResultsBtn" style="width:100%;padding:14px;">Salvar todos os resultados</button>`;
+  el.innerHTML = html;
+  document.getElementById("saveResultsBtn").onclick = async ()=>{
+    document.querySelectorAll(".admin-row").forEach(row=>{
+      const id = row.dataset.id;
+      const a = row.querySelector('input[data-side="a"]').value;
+      const b = row.querySelector('input[data-side="b"]').value;
+      if(a!=="" && b!==""){ resultsCache[id] = {a:parseInt(a), b:parseInt(b)}; }
+      else delete resultsCache[id];
+    });
+    await saveResults();
+    toast("Resultados salvos!");
+  };
+}
+
+/* ======================= INIT ======================= */
+render();
+</script>
+</body>
+</html>
