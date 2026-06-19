@@ -76,7 +76,6 @@ const fbApp = initializeApp(firebaseConfig);
 const db = getFirestore(fbApp);
 
 /* ======================= DADOS DA COPA ======================= */
-// Horários em horário de Brasília (-03:00). Fase eliminatória será adicionada pelo admin conforme os resultados.
 const GROUPS = {
   A:["México","África do Sul","Coreia do Sul","República Tcheca"],
   B:["Canadá","Catar","Suíça","Bósnia e Herzegovina"],
@@ -92,7 +91,6 @@ const GROUPS = {
   L:["Inglaterra","Croácia","Gana","Panamá"]
 };
 
-// id, group, t1, t2, datetime ISO (Brasília -03:00), local
 const MATCHES = [
 ["A1","A","México","África do Sul","2026-06-11T16:00:00-03:00","Cidade do México"],
 ["A2","A","Coreia do Sul","República Tcheca","2026-06-11T23:00:00-03:00","Guadalajara"],
@@ -166,13 +164,8 @@ const MATCHES = [
 ["K6","K","RD Congo","Uzbequistão","2026-06-27T20:30:00-03:00","Atlanta"],
 ["J5","J","Argélia","Áustria","2026-06-27T23:00:00-03:00","Kansas City"],
 ["J6","J","Jordânia","Argentina","2026-06-27T23:00:00-03:00","Dallas"],
-];
-
-
-// ... [Mantenha todos os jogos da fase de grupos que já estão aí e cole estes logo abaixo, antes do fecha colchetes ];]
 
 // ======================= FASE ELIMINATÓRIA (MATA-MATA) =======================
-
 // DEZESSEIS-AVOS DE FINAL (32 Melhores)
 ["M1","MATA","1º Grupo A","2º Grupo C","2026-06-28T16:00:00-03:00","Los Angeles"],
 ["M2","MATA","1º Grupo B","2º Grupo A","2026-06-28T21:00:00-03:00","San Francisco"],
@@ -186,7 +179,6 @@ const MATCHES = [
 ["M10","MATA","1º Grupo J","2º Grupo L","2026-07-02T19:00:00-03:00","Los Angeles"],
 ["M11","MATA","1º Grupo K","2º Grupo J","2026-07-03T16:00:00-03:00","Miami"],
 ["M12","MATA","1º Grupo L","2º Grupo K","2026-07-03T20:00:00-03:00","Seattle"],
-// (Os 8 melhores terceiros colocados também avançam na Copa real, você pode ajustar esses nomes como "Melhor 3º colocado" se preferir)
 ["M13","MATA","1º Melhor 3º","2º Melhor 3º","2026-07-04T15:00:00-03:00","Houston"],
 ["M14","MATA","3º Melhor 3º","4º Melhor 3º","2026-07-04T19:00:00-03:00","Vancouver"],
 ["M15","MATA","5º Melhor 3º","6º Melhor 3º","2026-07-05T16:00:00-03:00","San Francisco"],
@@ -217,6 +209,7 @@ const MATCHES = [
 
 // GRANDE FINAL
 ["F1","MATA","Vencedor S1","Vencedor S2","2026-07-19T16:00:00-03:00","Nova York/Nova Jersey"]
+];
 
 /* ======================= ESTADO ======================= */
 let userName = "";
@@ -345,7 +338,6 @@ function renderPalpites(){
 function renderMatchesList(){
   const wrap = document.getElementById("matchesWrap");
   
-  // 1. AJUSTE AQUI: Se for TODOS, pega os grupos de A a L + a tag "MATA"
   let groupsToShow = [];
   if (groupFilter === "TODOS") {
     groupsToShow = [...Object.keys(GROUPS), "MATA"];
@@ -357,7 +349,6 @@ function renderMatchesList(){
   groupsToShow.forEach(g=>{
     const ms = MATCHES.filter(m=>m[1]===g);
     
-    // 2. AJUSTE AQUI: Se for o Mata-Mata, mostra um título personalizado para não quebrar o código
     if (g === "MATA") {
       html += `<div class="card"><div class="group-title">Fase Eliminatória — Mata-Mata 🏆</div>`;
     } else {
@@ -404,6 +395,7 @@ function renderMatchesList(){
     ia.oninput = ib.oninput = ()=>{ clearTimeout(timer); timer=setTimeout(save,500); };
   });
 }
+
 async function computeRanking(){
   const all = await loadAllPicks();
   const players = new Set([...usersCache, ...Object.keys(all)]);
@@ -473,10 +465,13 @@ function renderAdmin(){
     };
     return;
   }
-  const groupsToShow = Object.keys(GROUPS);
+  
+  // CORREÇÃO AQUI: Garante que o Mata-Mata também apareça no painel do administrador
+  const groupsToShow = [...Object.keys(GROUPS), "MATA"];
   let html = `<div class="card"><p class="small">Lance o resultado real de cada jogo conforme eles forem acontecendo. Isso atualiza o ranking automaticamente.</p></div>`;
   groupsToShow.forEach(g=>{
-    html += `<div class="card"><div class="group-title">Grupo ${g}</div>`;
+    const title = g === "MATA" ? "Fase Eliminatória (Mata-Mata)" : `Grupo ${g}`;
+    html += `<div class="card"><div class="group-title">${title}</div>`;
     MATCHES.filter(m=>m[1]===g).forEach(m=>{
       const [id,,t1,t2,iso] = m;
       const res = resultsCache[id] || {a:"",b:""};
