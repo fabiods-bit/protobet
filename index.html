@@ -38,9 +38,8 @@
   th{color:var(--muted);font-weight:600;font-size:.75rem;text-transform:uppercase;}
   .rank-1{background:#fff8e1;}
   .small{font-size:.78rem;color:var(--muted);}
-  .admin-row{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid #eee;flex-wrap:wrap;}
-  .admin-row input[type="number"]{width:42px;padding:6px;text-align:center;border:1px solid #ccc;border-radius:5px;}
-  .admin-row input[type="text"]{width:110px;padding:6px;border:1px solid #ccc;border-radius:5px;font-size:0.85rem;}
+  .admin-row{display:flex;gap:6px;align-items:center;padding:6px 0;border-bottom:1px solid #eee;flex-wrap:wrap;}
+  .admin-row input{width:38px;padding:4px;text-align:center;border:1px solid #ccc;border-radius:5px;}
   .filter-row{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;}
   .filter-row select{padding:8px;border-radius:8px;border:1px solid #ccc;font-size:.85rem;}
   #toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--green-dark);color:#fff;padding:10px 18px;border-radius:20px;font-size:.85rem;opacity:0;transition:opacity .3s;pointer-events:none;z-index:50;}
@@ -50,10 +49,10 @@
 </head>
 <body>
 <header>
-   <div style="background:#fff;display:inline-block;padding:8px 18px;border-radius:12px;margin-bottom:8px;">
-    <img src="logo2.png" alt="ProtoBet" style="height:150px;display:block;">
+  <div style="background:#fff;display:inline-block;padding:8px 18px;border-radius:12px;margin-bottom:8px;">
+    <img src="logo.png" alt="ProtoBet" style="height:48px;display:block;">
   </div>
-  <p>Só para os Chegados</p>
+  <p>Palpites entre amigos — vale até o jogo começar!</p>
 </header>
 <div class="container" id="app"></div>
 <div id="toast"></div>
@@ -77,6 +76,7 @@ const fbApp = initializeApp(firebaseConfig);
 const db = getFirestore(fbApp);
 
 /* ======================= DADOS DA COPA ======================= */
+// Horários em horário de Brasília (-03:00). Fase eliminatória será adicionada pelo admin conforme os resultados.
 const GROUPS = {
   A:["México","África do Sul","Coreia do Sul","República Tcheca"],
   B:["Canadá","Catar","Suíça","Bósnia e Herzegovina"],
@@ -92,7 +92,8 @@ const GROUPS = {
   L:["Inglaterra","Croácia","Gana","Panamá"]
 };
 
-const MATCHES = [
+// id, group, t1, t2, datetime ISO (Brasília -03:00), local
+let MATCHES = [
 ["A1","A","México","África do Sul","2026-06-11T16:00:00-03:00","Cidade do México"],
 ["A2","A","Coreia do Sul","República Tcheca","2026-06-11T23:00:00-03:00","Guadalajara"],
 ["B1","B","Canadá","Bósnia e Herzegovina","2026-06-12T16:00:00-03:00","Toronto"],
@@ -165,55 +166,31 @@ const MATCHES = [
 ["K6","K","RD Congo","Uzbequistão","2026-06-27T20:30:00-03:00","Atlanta"],
 ["J5","J","Argélia","Áustria","2026-06-27T23:00:00-03:00","Kansas City"],
 ["J6","J","Jordânia","Argentina","2026-06-27T23:00:00-03:00","Dallas"],
-
-// ======================= MATA-MATA =======================
-["M1","MATA","1º Grupo A","2º Grupo C","2026-06-28T16:00:00-03:00","Los Angeles"],
-["M2","MATA","1º Grupo B","2º Grupo A","2026-06-28T21:00:00-03:00","San Francisco"],
-["M3","MATA","1º Grupo C","2º Grupo B","2026-06-29T15:00:00-03:00","Boston"],
-["M4","MATA","1º Grupo D","2º Grupo E","2026-06-29T19:00:00-03:00","Nova York/NJ"],
-["M5","MATA","1º Grupo E","2º Grupo D","2026-06-30T17:00:00-03:00","Dallas"],
-["M6","MATA","1º Grupo F","2º Grupo G","2026-06-30T21:00:00-03:00","Houston"],
-["M7","MATA","1º Grupo G","2º Grupo F","2026-07-01T16:00:00-03:00","Atlanta"],
-["M8","MATA","1º Grupo H","2º Grupo I","2026-07-01T20:00:00-03:00","Miami"],
-["M9","MATA","1º Grupo I","2º Grupo H","2026-07-02T15:00:00-03:00","Toronto"],
-["M10","MATA","1º Grupo J","2º Grupo L","2026-07-02T19:00:00-03:00","Los Angeles"],
-["M11","MATA","1º Grupo K","2º Grupo J","2026-07-03T16:00:00-03:00","Miami"],
-["M12","MATA","1º Grupo L","2º Grupo K","2026-07-03T20:00:00-03:00","Seattle"],
-["M13","MATA","1º Melhor 3º","2º Melhor 3º","2026-07-04T15:00:00-03:00","Houston"],
-["M14","MATA","3º Melhor 3º","4º Melhor 3º","2026-07-04T19:00:00-03:00","Vancouver"],
-["M15","MATA","5º Melhor 3º","6º Melhor 3º","2026-07-05T16:00:00-03:00","San Francisco"],
-["M16","MATA","7º Melhor 3º","8º Melhor 3º","2026-07-05T20:00:00-03:00","Cidade do México"],
-["O1","MATA","Vencedor M1","Vencedor M2","2026-07-07T16:00:00-03:00","Atlanta"],
-["O2","MATA","Vencedor M3","Vencedor M4","2026-07-07T21:00:00-03:00","Filadélfia"],
-["O3","MATA","Vencedor M5","Vencedor M6","2026-07-08T17:00:00-03:00","Houston"],
-["O4","MATA","Vencedor M7","Vencedor M8","2026-07-08T21:00:00-03:00","Nova York/NJ"],
-["O5","MATA","Vencedor M9","Vencedor M10","2026-07-09T16:00:00-03:00","Toronto"],
-["O6","MATA","Vencedor M11","Vencedor M12","2026-07-09T20:00:00-03:00","Seattle"],
-["O7","MATA","Vencedor M13","Vencedor M14","2026-07-10T17:00:00-03:00","Dallas"],
-["O8","MATA","Vencedor M15","Vencedor M16","2026-07-10T21:00:00-03:00","Kansas City"],
-["Q1","MATA","Vencedor O1","Vencedor O2","2026-07-11T16:30:00-03:00","Boston"],
-["Q2","MATA","Vencedor O3","Vencedor O4","2026-07-11T20:30:00-03:00","Miami"],
-["Q3","MATA","Vencedor O5","Vencedor O6","2026-07-12T16:30:00-03:00","Kansas City"],
-["Q4","MATA","Vencedor O7","Vencedor O8","2026-07-12T20:30:00-03:00","Los Angeles"],
-["S1","MATA","Vencedor Q1","Vencedor Q2","2026-07-14T20:00:00-03:00","Dallas"],
-["S2","MATA","Vencedor Q3","Vencedor Q4","2026-07-15T20:00:00-03:00","Atlanta"],
-["T3","MATA","Perdedor S1","Perdedor S2","2026-07-18T16:00:00-03:00","Miami"],
-["F1","MATA","Vencedor S1","Vencedor S2","2026-07-19T16:00:00-03:00","Nova York/Nova Jersey"]
 ];
+
+// Fases eliminatórias (mata-mata) — os jogos são cadastrados pelo admin direto no site, não ficam fixos no código.
+const PHASES = {
+  "32avos":"Fase de 32 (eliminatórias)",
+  "oitavas":"Oitavas de Final",
+  "quartas":"Quartas de Final",
+  "semis":"Semifinais",
+  "terceiro":"Disputa de 3º Lugar",
+  "final":"Final"
+};
 
 /* ======================= ESTADO ======================= */
 let userName = "";
 let activeTab = "palpites";
 let resultsCache = {};   // {matchId:{a,b}}
 let myPicksCache = {};   // {matchId:{a,b}}
-let teamsCache = {};     // NOVO: {matchId:{t1, t2}} para guardar os nomes reais definidos pelo Admin
 let usersCache = [];
+let locksCache = {};     // {matchId:true} bloqueio manual feito pelo admin
 let groupFilter = "TODOS";
-const ADMIN_PASS = "copa2026"; 
+const ADMIN_PASS = "copa2026"; // troque se quiser
 let isAdmin = false;
 
 function nowDate(){ return new Date(); }
-function isLocked(m){ return nowDate() >= new Date(m[4]); }
+function isLocked(m){ return locksCache[m[0]]===true || nowDate() >= new Date(m[4]); }
 function fmtDate(iso){
   const d = new Date(iso);
   return d.toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
@@ -224,7 +201,7 @@ function toast(msg){
   setTimeout(()=>t.classList.remove("show"),1800);
 }
 
-/* ======================= STORAGE HELPERS ======================= */
+/* ======================= STORAGE HELPERS (Firebase Firestore) ======================= */
 async function loadUsers(){
   try{
     const snap = await getDoc(doc(db,"meta","users"));
@@ -238,11 +215,10 @@ async function loadResults(){
   try{
     const snap = await getDoc(doc(db,"meta","results"));
     resultsCache = snap.exists() ? (snap.data().map || {}) : {};
-    teamsCache = snap.exists() ? (snap.data().teams || {}) : {}; // Puxa os nomes reais dos times do banco
-  }catch(e){ console.error(e); resultsCache = {}; teamsCache = {}; }
+  }catch(e){ console.error(e); resultsCache = {}; }
 }
 async function saveResults(){
-  await setDoc(doc(db,"meta","results"), { map: resultsCache, teams: teamsCache }); // Salva resultados e nomes juntos
+  await setDoc(doc(db,"meta","results"), { map: resultsCache });
 }
 async function loadMyPicks(){
   if(!userName) return;
@@ -262,6 +238,27 @@ async function loadAllPicks(){
   }catch(e){ console.error(e); }
   return out;
 }
+async function loadExtraMatches(){
+  try{
+    const snap = await getDoc(doc(db,"meta","extraMatches"));
+    const arr = snap.exists() ? (snap.data().list || []) : [];
+    // remove duplicatas antes de adicionar de novo (caso já existam no MATCHES)
+    const baseIds = new Set(MATCHES.map(m=>m[0]));
+    arr.forEach(m=>{ if(!baseIds.has(m[0])){ MATCHES.push(m); baseIds.add(m[0]); } });
+  }catch(e){ console.error(e); }
+}
+async function saveExtraMatches(list){
+  await setDoc(doc(db,"meta","extraMatches"), { list });
+}
+async function loadLocks(){
+  try{
+    const snap = await getDoc(doc(db,"meta","locks"));
+    locksCache = snap.exists() ? (snap.data().map || {}) : {};
+  }catch(e){ console.error(e); locksCache = {}; }
+}
+async function saveLocks(){
+  await setDoc(doc(db,"meta","locks"), { map: locksCache });
+}
 
 /* ======================= RENDER ======================= */
 function render(){
@@ -269,8 +266,8 @@ function render(){
   if(!userName){
     app.innerHTML = `
       <div class="card login-box">
-        <img src="logo2.png" alt="ProtoBet" style="height:200px;display:block;margin:0 auto 14px;">
-        <h2 style="margin-top:0;color:var(--green-dark)">Entrar no bolão</h2>
+        <img src="logo.png" alt="ProtoBet" style="height:54px;display:block;margin:0 auto 14px;">
+        <h2 style="margin-top:0;color:var(--green-dark);text-align:center;">Entrar no bolão</h2>
         <p class="small">Digite seu nome (use sempre o mesmo, para guardar seus palpites). Os dados são compartilhados com o grupo.</p>
         <input id="nameInput" placeholder="Seu nome" maxlength="24">
         <button id="enterBtn">Entrar</button>
@@ -282,6 +279,8 @@ function render(){
       await loadUsers();
       if(!usersCache.includes(userName)){ usersCache.push(userName); await saveUsers(); }
       await loadResults();
+      await loadExtraMatches();
+      await loadLocks();
       await loadMyPicks();
       render();
     };
@@ -320,8 +319,12 @@ function renderPalpites(){
     <div id="matchesWrap"></div>
   `;
   const sel = document.getElementById("groupSel");
-  sel.innerHTML = `<option value="TODOS">Todos os grupos</option>` +
-    Object.keys(GROUPS).map(g=>`<option value="${g}">Grupo ${g}</option>`).join("") + `<option value="MATA">Fase Eliminatória 🏆</option>`;
+  let opts = `<option value="TODOS">Todos os grupos</option>` +
+    Object.keys(GROUPS).map(g=>`<option value="${g}">Grupo ${g}</option>`).join("");
+  const hasPhase = {};
+  MATCHES.forEach(m=>{ if(PHASES[m[1]]) hasPhase[m[1]]=true; });
+  Object.keys(PHASES).forEach(p=>{ if(hasPhase[p]) opts += `<option value="${p}">${PHASES[p]}</option>`; });
+  sel.innerHTML = opts;
   sel.value = groupFilter;
   sel.onchange = ()=>{ groupFilter = sel.value; renderMatchesList(); };
   renderMatchesList();
@@ -329,31 +332,18 @@ function renderPalpites(){
 
 function renderMatchesList(){
   const wrap = document.getElementById("matchesWrap");
-  
-  let groupsToShow = [];
-  if (groupFilter === "TODOS") {
-    groupsToShow = [...Object.keys(GROUPS), "MATA"];
-  } else {
-    groupsToShow = [groupFilter];
-  }
-
+  const hasPhase = {};
+  MATCHES.forEach(m=>{ if(PHASES[m[1]]) hasPhase[m[1]]=true; });
+  const allKeys = [...Object.keys(GROUPS), ...Object.keys(PHASES).filter(p=>hasPhase[p])];
+  const groupsToShow = groupFilter==="TODOS" ? allKeys : [groupFilter];
   let html = "";
   groupsToShow.forEach(g=>{
     const ms = MATCHES.filter(m=>m[1]===g);
-    
-    if (g === "MATA") {
-      html += `<div class="card"><div class="group-title">Fase Eliminatória — Mata-Mata 🏆</div>`;
-    } else {
-      html += `<div class="card"><div class="group-title">Grupo ${g} — ${GROUPS[g].join(", ")}</div>`;
-    }
-
+    if(ms.length===0) return;
+    const title = GROUPS[g] ? `Grupo ${g} — ${GROUPS[g].join(", ")}` : PHASES[g];
+    html += `<div class="card"><div class="group-title">${title}</div>`;
     ms.forEach(m=>{
-      const [id,grp,defaultT1,defaultT2,iso,local] = m;
-      
-      // Checa se o Admin definiu nomes reais, senão usa os padrões ("1º do Grupo A", etc.)
-      const t1 = teamsCache[id]?.t1 || defaultT1;
-      const t2 = teamsCache[id]?.t2 || defaultT2;
-      
+      const [id,grp,t1,t2,iso,local] = m;
       const locked = isLocked(m);
       const pick = myPicksCache[id] || {a:"",b:""};
       const res = resultsCache[id];
@@ -451,7 +441,7 @@ function renderAdmin(){
     el.innerHTML = `
       <div class="card">
         <h3 style="margin-top:0;color:var(--green-dark)">Área do Admin</h3>
-        <p class="small">Aqui quem organiza o bolão lança os resultados reais e define as seleções classificadas do mata-mata.</p>
+        <p class="small">Aqui quem organiza o bolão lança os resultados reais dos jogos.</p>
         <input id="passInput" type="password" placeholder="Senha do admin" style="width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;margin-bottom:8px;">
         <button id="passBtn">Entrar</button>
       </div>`;
@@ -462,63 +452,87 @@ function renderAdmin(){
     };
     return;
   }
-  
-  const groupsToShow = [...Object.keys(GROUPS), "MATA"];
-  let html = `<div class="card"><p class="small">Defina o nome dos times reais (para o mata-mata) e lance os placares conforme os jogos acontecerem.</p></div>`;
-  groupsToShow.forEach(g=>{
-    const title = g === "MATA" ? "Fase Eliminatória (Mata-Mata)" : `Grupo ${g}`;
-    html += `<div class="card"><div class="group-title">${title}</div>`;
-    MATCHES.filter(m=>m[1]===g).forEach(m=>{
-      const [id,,defaultT1,defaultT2,iso] = m;
-      const res = resultsCache[id] || {a:"",b:""};
-      
-      // Puxa o nome atual do cache ou exibe o nome default
-      const currentT1 = teamsCache[id]?.t1 || defaultT1;
-      const currentT2 = teamsCache[id]?.t2 || defaultT2;
 
+  // formulário pra cadastrar jogo do mata-mata
+  let html = `
+    <div class="card">
+      <p class="small">Lance o resultado real de cada jogo conforme eles forem acontecendo. Isso atualiza o ranking automaticamente. Use o cadeado pra travar um jogo manualmente (mesmo antes do horário).</p>
+    </div>
+    <div class="card">
+      <div class="group-title">➕ Cadastrar jogo eliminatório</div>
+      <select id="newPhase" style="width:100%;padding:8px;margin-bottom:6px;border-radius:8px;border:1px solid #ccc;">
+        ${Object.keys(PHASES).map(p=>`<option value="${p}">${PHASES[p]}</option>`).join("")}
+      </select>
+      <div style="display:flex;gap:6px;margin-bottom:6px;">
+        <input id="newT1" placeholder="Time 1" style="flex:1;padding:8px;border-radius:8px;border:1px solid #ccc;">
+        <input id="newT2" placeholder="Time 2" style="flex:1;padding:8px;border-radius:8px;border:1px solid #ccc;">
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:6px;">
+        <input id="newDate" type="date" style="flex:1;padding:8px;border-radius:8px;border:1px solid #ccc;">
+        <input id="newTime" type="time" style="flex:1;padding:8px;border-radius:8px;border:1px solid #ccc;">
+      </div>
+      <input id="newLocal" placeholder="Local (cidade)" style="width:100%;padding:8px;margin-bottom:8px;border-radius:8px;border:1px solid #ccc;">
+      <button id="addMatchBtn" style="width:100%;">Adicionar jogo</button>
+    </div>
+  `;
+
+  const allKeys = [...Object.keys(GROUPS), ...Object.keys(PHASES)];
+  allKeys.forEach(g=>{
+    const ms = MATCHES.filter(m=>m[1]===g);
+    if(ms.length===0) return;
+    const title = GROUPS[g] ? `Grupo ${g}` : PHASES[g];
+    html += `<div class="card"><div class="group-title">${title}</div>`;
+    ms.forEach(m=>{
+      const [id,,t1,t2,iso] = m;
+      const res = resultsCache[id] || {a:"",b:""};
+      const locked = locksCache[id]===true;
       html += `<div class="admin-row" data-id="${id}">
-        <span class="small" style="color:var(--muted); font-weight:bold; min-width:50px;">ID: ${id}</span>
-        
-        <!--Inputs de texto para trocar o nome das equipes dinamicamente-->
-        <input type="text" data-team="t1" value="${currentT1}" placeholder="Time 1">
+        <span style="flex:1;min-width:160px;">${t1} x ${t2} <span class="meta">(${fmtDate(iso)})</span></span>
         <input type="number" min="0" data-side="a" value="${res.a}">
         <span>x</span>
         <input type="number" min="0" data-side="b" value="${res.b}">
-        <input type="text" data-team="t2" value="${currentT2}" placeholder="Time 2">
-        
-        <span class="meta">(${fmtDate(iso)})</span>
+        <label style="display:flex;align-items:center;gap:4px;font-size:.75rem;color:var(--muted);cursor:pointer;">
+          <input type="checkbox" data-lock="1" ${locked?"checked":""} style="width:auto;"> 🔒 bloquear
+        </label>
       </div>`;
     });
     html += `</div>`;
   });
-  html += `<button id="saveResultsBtn" style="width:100%;padding:14px;">Salvar todas as alterações (Nomes e Placares)</button>`;
+  html += `<button id="saveResultsBtn" style="width:100%;padding:14px;">Salvar resultados e bloqueios</button>`;
   el.innerHTML = html;
-  
+
+  document.getElementById("addMatchBtn").onclick = async ()=>{
+    const phase = document.getElementById("newPhase").value;
+    const t1 = document.getElementById("newT1").value.trim();
+    const t2 = document.getElementById("newT2").value.trim();
+    const date = document.getElementById("newDate").value;
+    const time = document.getElementById("newTime").value;
+    const local = document.getElementById("newLocal").value.trim() || "A definir";
+    if(!t1 || !t2 || !date || !time){ toast("Preencha time 1, time 2, data e horário"); return; }
+    const iso = `${date}T${time}:00-03:00`;
+    const id = phase + "_" + Date.now();
+    const newMatch = [id, phase, t1, t2, iso, local];
+    MATCHES.push(newMatch);
+    const extra = MATCHES.filter(m => PHASES[m[1]]);
+    await saveExtraMatches(extra);
+    toast("Jogo adicionado!");
+    renderAdmin();
+  };
+
   document.getElementById("saveResultsBtn").onclick = async ()=>{
     document.querySelectorAll(".admin-row").forEach(row=>{
       const id = row.dataset.id;
-      
-      // Captura os valores dos nomes dos times
-      const inputT1 = row.querySelector('input[data-team="t1"]').value.trim();
-      const inputT2 = row.querySelector('input[data-team="t2"]').value.trim();
-      
-      // Captura os valores dos placares
       const a = row.querySelector('input[data-side="a"]').value;
       const b = row.querySelector('input[data-side="b"]').value;
-      
-      // Salva os nomes no objeto teamsCache
-      teamsCache[id] = { t1: inputT1, t2: inputT2 };
-
-      // Salva ou remove os placares do objeto de resultados
-      if(a!=="" && b!==""){ 
-        resultsCache[id] = {a:parseInt(a), b:parseInt(b)}; 
-      } else { 
-        delete resultsCache[id]; 
-      }
+      if(a!=="" && b!==""){ resultsCache[id] = {a:parseInt(a), b:parseInt(b)}; }
+      else delete resultsCache[id];
+      const lockChk = row.querySelector('input[data-lock]');
+      if(lockChk.checked) locksCache[id] = true;
+      else delete locksCache[id];
     });
-    
     await saveResults();
-    toast("Nomes e placares atualizados com sucesso!");
+    await saveLocks();
+    toast("Resultados e bloqueios salvos!");
   };
 }
 
