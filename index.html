@@ -185,6 +185,7 @@ let resultsCache = {};   // {matchId:{a,b}}
 let myPicksCache = {};   // {matchId:{a,b}}
 let usersCache = [];
 let locksCache = {};     // {matchId:true} bloqueio manual feito pelo admin
+let adminShowGroups = false; // mostra fase de grupos no admin (caso precise corrigir algum placar)
 let groupFilter = "TODOS";
 const ADMIN_PASS = "copa2026"; // troque se quiser
 let isAdmin = false;
@@ -319,8 +320,7 @@ function renderPalpites(){
     <div id="matchesWrap"></div>
   `;
   const sel = document.getElementById("groupSel");
-  let opts = `<option value="TODOS">Todos os grupos</option>` +
-    Object.keys(GROUPS).map(g=>`<option value="${g}">Grupo ${g}</option>`).join("");
+  let opts = `<option value="TODOS">Todos os jogos</option>`;
   const hasPhase = {};
   MATCHES.forEach(m=>{ if(PHASES[m[1]]) hasPhase[m[1]]=true; });
   Object.keys(PHASES).forEach(p=>{ if(hasPhase[p]) opts += `<option value="${p}">${PHASES[p]}</option>`; });
@@ -334,9 +334,12 @@ function renderMatchesList(){
   const wrap = document.getElementById("matchesWrap");
   const hasPhase = {};
   MATCHES.forEach(m=>{ if(PHASES[m[1]]) hasPhase[m[1]]=true; });
-  const allKeys = [...Object.keys(GROUPS), ...Object.keys(PHASES).filter(p=>hasPhase[p])];
+  const allKeys = Object.keys(PHASES).filter(p=>hasPhase[p]); // grupos ficam ocultos da tela (mas continuam valendo no ranking)
   const groupsToShow = groupFilter==="TODOS" ? allKeys : [groupFilter];
   let html = "";
+  if(allKeys.length===0){
+    html = `<div class="card"><p class="small">Nenhum jogo eliminatório cadastrado ainda. Assim que o admin cadastrar, eles aparecem aqui.</p></div>`;
+  }
   groupsToShow.forEach(g=>{
     const ms = MATCHES.filter(m=>m[1]===g);
     if(ms.length===0) return;
@@ -457,6 +460,10 @@ function renderAdmin(){
   let html = `
     <div class="card">
       <p class="small">Lance o resultado real de cada jogo conforme eles forem acontecendo. Isso atualiza o ranking automaticamente. Use o cadeado pra travar um jogo manualmente (mesmo antes do horário).</p>
+      <label style="display:flex;align-items:center;gap:6px;font-size:.8rem;cursor:pointer;">
+        <input type="checkbox" id="showGroupsChk" ${adminShowGroups?"checked":""} style="width:auto;">
+        Mostrar fase de grupos aqui (caso precise corrigir algum placar)
+      </label>
     </div>
     <div class="card">
       <div class="group-title">➕ Cadastrar jogo eliminatório</div>
@@ -476,7 +483,7 @@ function renderAdmin(){
     </div>
   `;
 
-  const allKeys = [...Object.keys(GROUPS), ...Object.keys(PHASES)];
+  const allKeys = adminShowGroups ? [...Object.keys(GROUPS), ...Object.keys(PHASES)] : Object.keys(PHASES);
   allKeys.forEach(g=>{
     const ms = MATCHES.filter(m=>m[1]===g);
     if(ms.length===0) return;
@@ -500,6 +507,7 @@ function renderAdmin(){
   });
   html += `<button id="saveResultsBtn" style="width:100%;padding:14px;">Salvar resultados e bloqueios</button>`;
   el.innerHTML = html;
+  document.getElementById("showGroupsChk").onchange = (e)=>{ adminShowGroups = e.target.checked; renderAdmin(); };
 
   document.getElementById("addMatchBtn").onclick = async ()=>{
     const phase = document.getElementById("newPhase").value;
