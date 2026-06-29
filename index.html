@@ -194,7 +194,10 @@ const ADMIN_PASS = "copa2026"; // troque se quiser
 let isAdmin = false;
 
 function nowDate(){ return new Date(); }
-function isLocked(m){ return locksCache[m[0]]===true || nowDate() >= new Date(m[4]); }
+function isLocked(m){
+  const v = locksCache[m[0]];
+  return v===true || v==="closed"; // só trava se o admin travar manualmente. Sem bloqueio automático por horário.
+}
 function fmtDate(iso){
   const d = new Date(iso);
   return d.toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
@@ -501,15 +504,16 @@ function renderAdmin(){
     ms.forEach(m=>{
       const [id,,t1,t2,iso] = m;
       const res = resultsCache[id] || {a:"",b:""};
-      const locked = locksCache[id]===true;
+      const lockVal = (locksCache[id]===true||locksCache[id]==="closed") ? "closed" : "open";
       html += `<div class="admin-row" data-id="${id}">
         <span style="flex:1;min-width:160px;">${t1} x ${t2} <span class="meta">(${fmtDate(iso)})</span></span>
         <input type="number" min="0" data-side="a" value="${res.a}">
         <span>x</span>
         <input type="number" min="0" data-side="b" value="${res.b}">
-        <label style="display:flex;align-items:center;gap:4px;font-size:.75rem;color:var(--muted);cursor:pointer;">
-          <input type="checkbox" data-lock="1" ${locked?"checked":""} style="width:auto;"> 🔒 bloquear
-        </label>
+        <select data-lockmode style="font-size:.75rem;padding:4px;border-radius:6px;border:1px solid #ccc;">
+          <option value="open" ${lockVal==="open"?"selected":""}>🔓 Aberto pra apostar</option>
+          <option value="closed" ${lockVal==="closed"?"selected":""}>🔒 Bloqueado</option>
+        </select>
       </div>`;
     });
     html += `</div>`;
@@ -550,8 +554,8 @@ function renderAdmin(){
       const b = row.querySelector('input[data-side="b"]').value;
       if(a!=="" && b!==""){ resultsCache[id] = {a:parseInt(a), b:parseInt(b)}; }
       else delete resultsCache[id];
-      const lockChk = row.querySelector('input[data-lock]');
-      if(lockChk.checked) locksCache[id] = true;
+      const lockSel = row.querySelector('select[data-lockmode]').value;
+      if(lockSel==="closed") locksCache[id] = "closed";
       else delete locksCache[id];
     });
     try{
