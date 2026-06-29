@@ -2,6 +2,9 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>Bolão Copa 2026</title>
 <style>
   :root{
@@ -243,13 +246,19 @@ async function loadExtraMatches(){
   try{
     const snap = await getDoc(doc(db,"meta","extraMatches"));
     const arr = snap.exists() ? (snap.data().list || []) : [];
-    // remove duplicatas antes de adicionar de novo (caso já existam no MATCHES)
     const baseIds = new Set(MATCHES.map(m=>m[0]));
-    arr.forEach(m=>{ if(!baseIds.has(m[0])){ MATCHES.push(m); baseIds.add(m[0]); } });
+    arr.forEach(o=>{
+      if(!baseIds.has(o.id)){
+        MATCHES.push([o.id, o.phase, o.t1, o.t2, o.iso, o.local]);
+        baseIds.add(o.id);
+      }
+    });
   }catch(e){ console.error(e); }
 }
 async function saveExtraMatches(list){
-  await setDoc(doc(db,"meta","extraMatches"), { list });
+  // Firestore não aceita array de arrays — salvamos como array de objetos
+  const objList = list.map(m=>({ id:m[0], phase:m[1], t1:m[2], t2:m[3], iso:m[4], local:m[5] }));
+  await setDoc(doc(db,"meta","extraMatches"), { list: objList });
 }
 async function loadLocks(){
   try{
@@ -521,10 +530,17 @@ function renderAdmin(){
     const id = phase + "_" + Date.now();
     const newMatch = [id, phase, t1, t2, iso, local];
     MATCHES.push(newMatch);
-    const extra = MATCHES.filter(m => PHASES[m[1]]);
-    await saveExtraMatches(extra);
-    toast("Jogo adicionado!");
-    renderAdmin();
+    try{
+      const extra = MATCHES.filter(m => PHASES[m[1]]);
+      await saveExtraMatches(extra);
+      toast("Jogo adicionado e salvo no banco ✓");
+      renderAdmin();
+    }catch(err){
+      console.error(err);
+      MATCHES.pop(); // desfaz, já que não foi salvo de verdade
+      toast("ERRO ao salvar: " + (err.code || err.message || "desconhecido"));
+      alert("Não foi possível salvar no banco de dados.\n\nErro: " + (err.message || err) + "\n\nIsso geralmente significa que a regra do Firestore não está liberada para a coleção 'meta'. Verifique no console do Firebase.");
+    }
   };
 
   document.getElementById("saveResultsBtn").onclick = async ()=>{
@@ -538,9 +554,14 @@ function renderAdmin(){
       if(lockChk.checked) locksCache[id] = true;
       else delete locksCache[id];
     });
-    await saveResults();
-    await saveLocks();
-    toast("Resultados e bloqueios salvos!");
+    try{
+      await saveResults();
+      await saveLocks();
+      toast("Resultados e bloqueios salvos ✓");
+    }catch(err){
+      console.error(err);
+      alert("Não foi possível salvar no banco de dados.\n\nErro: " + (err.message || err));
+    }
   };
 }
 
